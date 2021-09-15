@@ -7,6 +7,13 @@
 #include <vector>
 
 #define NUM_OF_DATA 10
+#define NUM_OF_CHANNEL 4
+
+#define DEBUG
+
+// Pins
+int channelPin[NUM_OF_CHANNEL] = {14,12,13,15};
+int sizeOfChannelPin = sizeof(channelPin)/sizeof(channelPin[0]);
 
 // Globals
 WebSocketsServer websocket = WebSocketsServer(80);
@@ -22,6 +29,7 @@ bool dataArrived = false;
 bool update = false;
 bool isRegistered = false;
 bool isConnected = false;
+std::string buttonState = "";
 
 // websocket string
 std::string rawData;
@@ -30,8 +38,6 @@ std::string command;
 std::string response;
 std::string password;
 std::vector<std::string> parsecpp(std::string data, std::string delim);
-
-// LittleFS
 
 // Called when receiving any WebSocket message
 void onWebSocketEvent(uint8_t num,
@@ -44,25 +50,28 @@ void onWebSocketEvent(uint8_t num,
 
     // Client has disconnected
     case WStype_DISCONNECTED:
-      Serial.printf("[%u] Disconnected!\n", num);
-      update = true;
-      isConnected = false;
-      mdnsBegin();
+      if(isConnected){
+        #ifdef DEBUG
+          Serial.printf("[%u] Disconnected!\n", num);
+        #endif
+        update = true;
+        isConnected = false;
+      }
       break;
+      
 
     // New client has connected
     case WStype_CONNECTED:
-      {
-        if(!isConnected){
-          IPAddress ip = websocket.remoteIP(num);
+      if(!isConnected){
+        IPAddress ip = websocket.remoteIP(num);
+        #ifdef DEBUG
           Serial.printf("[%u] Connection from ", num);
           Serial.println(ip.toString());
-          // stop MDNS
-          MDNS.close();
-          update = false;
-          isConnected = true;
-        }
-        
+        #endif
+        // stop MDNS
+        MDNS.close();
+        update = false;
+        isConnected = true;
       }
       break;
 
@@ -77,12 +86,7 @@ void onWebSocketEvent(uint8_t num,
       } else {
         // Call callback function to process message
         // Parse the message
-
         message = rawData;
-
-        #ifdef DEBUG
-          Serial.printf("Message data is %s \n", this->message.c_str());
-        #endif
 
         std::vector<std::string> parsedDataVector{};
         parsedDataVector.reserve(10);
@@ -91,6 +95,8 @@ void onWebSocketEvent(uint8_t num,
         command = parsedDataVector[0];
         
         if(command.compare("register") == 0){
+          // Close MDNS immediately
+          MDNS.close();
 
           isRegistered = true;
           response = "registered";
@@ -99,43 +105,52 @@ void onWebSocketEvent(uint8_t num,
           response.clear();
 
           // Store password to flash
-          myFlash.writeData(password);
+          myFlash.writeData(password, "/config.txt");
+
 
         } else if (command.compare("relay") == 0){
           if(parsedDataVector[1] == password){
             // User verifier
             // Serial.println("User verified");
+            isRegistered = true;
             // update relay state here
-            myRelayState.setStateChannel1(parsedDataVector[2]);
-            myRelayState.setStateChannel2(parsedDataVector[3]);
-            myRelayState.setStateChannel3(parsedDataVector[4]);
-            myRelayState.setStateChannel4(parsedDataVector[5]);
+            for (size_t i = 0; i < NUM_OF_CHANNEL; i++)
+            {
+              myRelayState.setState(i, parsedDataVector[i+2]);
+            }
             dataArrived = true;
           } else {
             // user not verified
-            Serial.println("User not verified");
+            #ifdef DEBUG
+              Serial.println("User not verified");
+            #endif
           }
         } else if (command.compare("reset") == 0) {
           if(parsedDataVector[1] == password){
             // Reset here
-            Serial.println("Reset reqeusted from client");
+            #ifdef DEBUG
+              Serial.println("Reset requested from client");
+            #endif
             isRegistered = false;
 
             // Restart mdns, make it discoverable again
-            mdnsBegin();
+            // mdnsBegin();
 
             // Remove stored data in flash
-            myFlash.writeData("");
+            myFlash.deleteData("/config.txt");
+            myFlash.deleteData("/state.txt");
 
-            // wm.resetSettings();
+            wm.resetSettings();
 
-            // delay(2);
+            delay(2);
 
             // Restart ESP
-            // ESP.restart();
+            ESP.restart();
           } else {
             // user not verified
-            Serial.println("User not verified");
+            #ifdef DEBUG
+              Serial.println("User not verified");
+            #endif
           }
         }
       }
@@ -170,10 +185,16 @@ std::vector<std::string> parsecpp(std::string data, std::string delim){
 
 void mdnsBegin(){
   if (!MDNS.begin("esp8266")) {             // Start the mDNS responder for esp8266.local
+  #ifdef DEBUG
     Serial.println("Error setting up MDNS responder!");
+  #endif
   }
-  Serial.println("mDNS responder started");
+  #ifdef DEBUG
+    Serial.println("mDNS responder started");
+  #endif
   MDNS.addService("esprel", "tcp", 80);
+  isRegistered = false;
+  startTime = millis();
 }
 
 void setup() {
@@ -196,15 +217,19 @@ void setup() {
     isRegistered = false;
 
     if(!res) {
+      #ifdef DEBUG
         Serial.println("Failed to connect");
+      #endif
         // ESP.restart();
     } 
     else {
         //if you get here you have connected to the WiFi    
+      #ifdef DEBUG
         Serial.println("Connected to Wi-Fi");
         Serial.println(wm.getDefaultAPName());
         Serial.println(WiFi.SSID());  
         Serial.println(WiFi.localIP());
+      #endif
 
         mdnsBegin();
 
@@ -212,32 +237,52 @@ void setup() {
         websocket.begin();
         websocket.onEvent(onWebSocketEvent);
 
-        password = myFlash.readData();
+        password = myFlash.readData("/config.txt");
+        #ifdef DEBUG
         Serial.printf("Password is %s\n", password.c_str());
+        Serial.printf("Password length is %d\n", password.length());
+        #endif
+        
+        if(password.length() > 2){
+          isRegistered = true;
+        } else {
+          isRegistered = false;
+        }
 
-        isRegistered = true;
+        // Retrieve last state
+        std::string stateBuffer = myFlash.readData("/state.txt");
+        for(size_t i = 0; i < stateBuffer.length(); i++){
+          myRelayState.setState(i, stateBuffer.substr(i,i+1));
+        }
+        dataArrived = true;
+    }
+
+    // Define pinmode
+    for (int i = 0; i < sizeOfChannelPin; i++) {
+      pinMode(channelPin[i], OUTPUT);
     }
 
     startTime = millis();
 
     pinMode(2, OUTPUT);
     digitalWrite(2, HIGH);
-    update = true;
-
+    update = true;    
 }
 
 void loop() {
-
     elapsedTime = millis() - startTime;
-    if(( elapsedTime < 60000 ) && !isRegistered ){
+    bool isTimeout = (elapsedTime < 60000) ? false : true;
+    if( !isTimeout && !isRegistered ){
       // If device is not registered, broadcast MDNS
+      // Serial.println("Broadcasting MDNSservice");
       MDNS.update();
+      runOnce = false;
     } else {
       // If registered, stop broadcasting MDNS
       if(!runOnce){
         if(isRegistered){
           Serial.println("Device registered, closing MDNS service");
-        } else if (elapsedTime < 60000){
+        } else if (isTimeout){
           Serial.println("Timeout, closing MDNS service");
         }
         MDNS.close();
@@ -247,10 +292,24 @@ void loop() {
 
     if(dataArrived){
       dataArrived = false;
-      Serial.printf("Relay state is %d, %d, %d, %d\n", myRelayState.getStateChannel1(),
-        myRelayState.getStateChannel2(), myRelayState.getStateChannel3(),
-        myRelayState.getStateChannel4());
-      digitalWrite(2, myRelayState.getStateChannel1() ? LOW : HIGH);
+
+      #ifdef DEBUG
+      Serial.printf("Relay state is %d, %d, %d, %d\n", myRelayState.getState(0),
+        myRelayState.getState(1), myRelayState.getState(2),
+        myRelayState.getState(3));
+      #endif
+      digitalWrite(2, myRelayState.getState(0) ? LOW : HIGH);
+
+      // Update each channel
+      for (int i = 0; i < sizeOfChannelPin; i++) {
+        // Set pin state
+        digitalWrite(channelPin[i], myRelayState.getState(i));
+        buttonState = buttonState + std::string(myRelayState.getState(i) ? "1" : "0");
+      }
+
+      // Store to flash
+      myFlash.writeData(buttonState, "/state.txt");
+      buttonState.clear();
     }
 
     // Websocket Loop

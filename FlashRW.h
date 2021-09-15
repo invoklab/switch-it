@@ -14,11 +14,11 @@ public:
   ~FlashRW();
 
   // Setter
-  void writeData(std::string data);
-  void deleteData();
+  void writeData(std::string data, std::string path);
+  void deleteData(std::string path);
 
   // Getter
-  std::string readData();
+  std::string readData(std::string path);
   bool getInitStatus();
 };
 

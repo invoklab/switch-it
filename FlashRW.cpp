@@ -11,9 +11,9 @@ FlashRW::~FlashRW()
 {
 }
 
-void FlashRW::writeData(std::string data) {
+void FlashRW::writeData(std::string data, std::string path) {
   //Open the file
-  this->file = LittleFS.open("/config.txt", "w");
+  this->file = LittleFS.open(path.c_str(), "w");
   //Write to the file
   file.print(data.c_str());
   // delay(2);
@@ -22,8 +22,8 @@ void FlashRW::writeData(std::string data) {
   Serial.println("Write successful");
 }
 
-std::string FlashRW::readData(){
-  this->file = LittleFS.open("/config.txt", "r");
+std::string FlashRW::readData(std::string path){
+  this->file = LittleFS.open(path.c_str(), "r");
   if(!file){
     Serial.println("Failed to open file for reading");
   }
@@ -41,9 +41,9 @@ std::string FlashRW::readData(){
   return buffer;
 }
 
-void FlashRW::deleteData(){
+void FlashRW::deleteData(std::string path){
   //Open the file
-  this->file = LittleFS.open("/config.txt", "w");
+  this->file = LittleFS.open(path.c_str(), "w");
   //Write to the file
   file.print("");
   // delay(2);
