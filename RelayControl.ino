@@ -26,6 +26,11 @@ double startTime;
 double elapsedTime;
 bool runOnce = false;
 
+// LED Blink
+double elapsedTimeLED;
+double startTimeLED;
+bool ledState;
+
 // Flags
 bool registrationDone = false;
 bool dataArrived = false;
@@ -202,6 +207,11 @@ void setup() {
     // put your setup code here, to run once:
     Serial.begin(115200);
     
+    // Set Internal LED Pin
+    pinMode(LED_BUILTIN, OUTPUT);
+    digitalWrite(LED_BUILTIN, LOW);
+
+    
     //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
     // Turn off debug mode
     #ifndef DEBUG
@@ -264,8 +274,10 @@ void setup() {
 
     startTime = millis();
 
-    pinMode(2, OUTPUT);
-    digitalWrite(2, HIGH);
+    // Turn on LED to let user know ESP is broadcastind MDNS
+    digitalWrite(LED_BUILTIN, LOW);
+    startTimeLED = millis();
+    ledState = true;
     update = true;    
 }
 
@@ -277,6 +289,15 @@ void loop() {
       // Serial.println("Broadcasting MDNSservice");
       MDNS.update();
       runOnce = false;
+
+      // Built in LED blinker
+      elapsedTimeLED = millis() - startTimeLED;
+      if(elapsedTimeLED > 500){
+        ledState = !ledState;
+        digitalWrite(LED_BUILTIN, ledState);
+        startTimeLED = millis();
+      }
+      
     } else {
       // If registered, stop broadcasting MDNS
       if(!runOnce){
@@ -291,8 +312,14 @@ void loop() {
         }
         MDNS.close();
         runOnce = true;
+        // Turn off LED
+        digitalWrite(LED_BUILTIN, HIGH);
       }
     }
+
+    
+
+
 
     if(dataArrived){
       dataArrived = false;
@@ -302,7 +329,7 @@ void loop() {
         myRelayState.getState(1), myRelayState.getState(2),
         myRelayState.getState(3));
       #endif
-      digitalWrite(2, myRelayState.getState(0) ? LOW : HIGH);
+      digitalWrite(LED_BUILTIN, myRelayState.getState(0) ? LOW : HIGH);
 
       // Update each channel
       for (int i = 0; i < sizeOfChannelPin; i++) {
