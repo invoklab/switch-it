@@ -16,24 +16,28 @@ void FlashRW::writeData(std::string data, std::string path) {
   this->file = LittleFS.open(path.c_str(), "w");
   //Write to the file
   file.print(data.c_str());
-  // delay(2);
   //Close the file
   file.close();
-  Serial.println("Write successful");
+  #ifdef DEBUG
+    Serial.println("Write successful");
+  #endif
 }
 
 std::string FlashRW::readData(std::string path){
   this->file = LittleFS.open(path.c_str(), "r");
   if(!file){
-    Serial.println("Failed to open file for reading");
+    #ifdef DEBUG
+      Serial.println("Failed to open file for reading");
+    #endif
   }
   
-  Serial.println("File Content:");
+  #ifdef DEBUG
+    Serial.println("File Content:");
+  #endif
   std::string buffer = "";
   char charBuffer;
   while(file.available()){
     // Assign password string here
-    // Serial.write(file.read());
     charBuffer = file.read();
     buffer.insert(buffer.end(),charBuffer);
   }
@@ -46,10 +50,11 @@ void FlashRW::deleteData(std::string path){
   this->file = LittleFS.open(path.c_str(), "w");
   //Write to the file
   file.print("");
-  // delay(2);
   //Close the file
   file.close();
-  Serial.println("Write successful");
+  #ifdef DEBUG
+    Serial.println("Write successful");
+  #endif
 }
 
 bool FlashRW::getInitStatus(){

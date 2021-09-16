@@ -1,3 +1,5 @@
+// #define DEBUG
+
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <ESP8266mDNS.h> 
 #include <WebSocketsServer.h>
@@ -9,8 +11,6 @@
 #define NUM_OF_DATA 10
 #define NUM_OF_CHANNEL 4
 
-#define DEBUG
-
 // Pins
 int channelPin[NUM_OF_CHANNEL] = {14,12,13,15};
 int sizeOfChannelPin = sizeof(channelPin)/sizeof(channelPin[0]);
@@ -21,9 +21,12 @@ RelayState myRelayState = RelayState();
 FlashRW myFlash = FlashRW();
 WiFiManager wm;
 
+// Timer
 double startTime;
 double elapsedTime;
 bool runOnce = false;
+
+// Flags
 bool registrationDone = false;
 bool dataArrived = false;
 bool update = false;
@@ -58,7 +61,6 @@ void onWebSocketEvent(uint8_t num,
         isConnected = false;
       }
       break;
-      
 
     // New client has connected
     case WStype_CONNECTED:
@@ -107,10 +109,9 @@ void onWebSocketEvent(uint8_t num,
           // Store password to flash
           myFlash.writeData(password, "/config.txt");
 
-
         } else if (command.compare("relay") == 0){
           if(parsedDataVector[1] == password){
-            // User verifier
+            // User verified
             // Serial.println("User verified");
             isRegistered = true;
             // update relay state here
@@ -133,13 +134,11 @@ void onWebSocketEvent(uint8_t num,
             #endif
             isRegistered = false;
 
-            // Restart mdns, make it discoverable again
-            // mdnsBegin();
-
             // Remove stored data in flash
             myFlash.deleteData("/config.txt");
             myFlash.deleteData("/state.txt");
 
+            // Wipe WiFi setting
             wm.resetSettings();
 
             delay(2);
@@ -204,11 +203,10 @@ void setup() {
     Serial.begin(115200);
     
     //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
-    
-
-    //reset settings - wipe credentials for testing
-    // wm.resetSettings();
-
+    // Turn off debug mode
+    #ifndef DEBUG
+      wm.setDebugOutput(false);
+    #endif
     // Set IP Address
     wm.setAPStaticIPConfig(IPAddress(1,1,1,1), IPAddress(1,1,1,1), IPAddress(255,255,255,0));
     bool res;
@@ -231,9 +229,11 @@ void setup() {
         Serial.println(WiFi.localIP());
       #endif
 
+        // Start MDNS Service
         mdnsBegin();
 
         // Start WebSocket server and assign callback
+        websocket.setAuthorization("dGNoLWl0IQ","kdWlubyBma");
         websocket.begin();
         websocket.onEvent(onWebSocketEvent);
 
@@ -257,7 +257,7 @@ void setup() {
         dataArrived = true;
     }
 
-    // Define pinmode
+    // Assign Pin
     for (int i = 0; i < sizeOfChannelPin; i++) {
       pinMode(channelPin[i], OUTPUT);
     }
@@ -281,9 +281,13 @@ void loop() {
       // If registered, stop broadcasting MDNS
       if(!runOnce){
         if(isRegistered){
-          Serial.println("Device registered, closing MDNS service");
+          #ifdef DEBUG
+            Serial.println("Device registered, closing MDNS service");
+          #endif
         } else if (isTimeout){
-          Serial.println("Timeout, closing MDNS service");
+          #ifdef DEBUG
+            Serial.println("Timeout, closing MDNS service");
+          #endif
         }
         MDNS.close();
         runOnce = true;
