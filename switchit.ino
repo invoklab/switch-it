@@ -25,6 +25,7 @@ WiFiManager wm;
 double startTime;
 double elapsedTime;
 bool runOnce = false;
+bool isTimeout = false;
 
 // LED Blink
 double elapsedTimeLED;
@@ -102,8 +103,6 @@ void onWebSocketEvent(uint8_t num,
         command = parsedDataVector[0];
         
         if(command.compare("register") == 0){
-          // Close MDNS immediately
-          MDNS.close();
 
           isRegistered = true;
           response = "registered";
@@ -113,6 +112,9 @@ void onWebSocketEvent(uint8_t num,
 
           // Store password to flash
           myFlash.writeData(password, "/config.txt");
+
+          // Close MDNS immediately
+          MDNS.close();
 
         } else if (command.compare("relay") == 0){
           if(parsedDataVector[1] == password){
@@ -211,7 +213,6 @@ void setup() {
     pinMode(LED_BUILTIN, OUTPUT);
     digitalWrite(LED_BUILTIN, LOW);
 
-    
     //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
     // Turn off debug mode
     #ifndef DEBUG
@@ -283,10 +284,10 @@ void setup() {
 
 void loop() {
     elapsedTime = millis() - startTime;
-    bool isTimeout = (elapsedTime < 60000) ? false : true;
+    isTimeout = (elapsedTime < 60000) ? false : true;
     if( !isTimeout && !isRegistered ){
       // If device is not registered, broadcast MDNS
-      // Serial.println("Broadcasting MDNSservice");
+      
       MDNS.update();
       runOnce = false;
 
@@ -297,6 +298,10 @@ void loop() {
         digitalWrite(LED_BUILTIN, ledState);
         startTimeLED = millis();
       }
+
+      #ifdef DEBUG
+        Serial.println("Broadcasting MDNSservice");
+      #endif
       
     } else {
       // If registered, stop broadcasting MDNS
@@ -317,10 +322,6 @@ void loop() {
       }
     }
 
-    
-
-
-
     if(dataArrived){
       dataArrived = false;
 
@@ -328,8 +329,9 @@ void loop() {
       Serial.printf("Relay state is %d, %d, %d, %d\n", myRelayState.getState(0),
         myRelayState.getState(1), myRelayState.getState(2),
         myRelayState.getState(3));
+        digitalWrite(LED_BUILTIN, myRelayState.getState(0) ? LOW : HIGH);
       #endif
-      digitalWrite(LED_BUILTIN, myRelayState.getState(0) ? LOW : HIGH);
+      
 
       // Update each channel
       for (int i = 0; i < sizeOfChannelPin; i++) {
