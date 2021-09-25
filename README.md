@@ -5,7 +5,7 @@
 switch-it! is a simple controller app that lets you control your ESP8266 I/O pins wirelessly. Need a quick fix for project demonstration? No worries, flash .bin firmware to ESP8266 board, and you can control it in no time. Possible use case includes:
 - Turn on/off appliances using relay (smart home)
 - Turn on/off LEDs, lights, buzzer
-- Control DC Motors
+- Control DC Motors, actuators
 - and many more!
 
 ## Features
