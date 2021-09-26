@@ -1,6 +1,7 @@
 # switch-it!
 ## Wireless I/O controller for ESP8266
 
+[__switch-it!__](https://play.google.com/store/apps/details?id=com.switchit.app) is available now on Google Play. 
 ## What is switch-it! ?
 switch-it! is a simple controller app that lets you control your ESP8266 I/O pins wirelessly. Need a quick fix for project demonstration? No worries, flash .bin firmware to ESP8266 board, and you can control it in no time. Possible use case includes:
 - Turn on/off appliances using relay (smart home)
