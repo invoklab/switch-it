@@ -6,13 +6,19 @@
 
 ## What is switch-it! ?
 
-switch-it! is a simple controller app that lets you control your ESP8266 I/O pins wirelessly. Need a quick fix for project demonstration? No worries, flash .bin firmware to ESP8266 board, and you can control it in no time. Possible use case includes:
+switch-it! is a simple configurator, monitoring, and controller app for your D.I.Y ESP8266 IoT device. You can use switch-it! for real-time monitoring and controling for example relay and motion sensor through WebSocket and MQTT. All configuration can be done via the app, including Wi-Fi and MQTT setup, so there is no need to hardcode anything, at all.
 
-- Turn on/off appliances using relay (smart home)
-- Turn on/off LEDs, lights, buzzer
-- Control DC Motors, actuators
-- Detect motion with PIR sensor
-- and many more!
+## Features
+
+- __One Time Binding__ , the app will store connected device locally, so you don't have to manually enter address of the ESP everytime you wan't to access it.
+- __Free 3 Device Registration__, bind up to 3 ESP8266 device for free.
+- __MQTT__, support control and monitoring through MQTT. (Currently we only support, and tested MQTT implementation with HiveMQ broker).
+- __OTA Firmware Update__, update device firmware through webserver.
+- __Auto Discovery__, with mDNS service, the app will automatically look for configured ESP within the same local network.
+- __No Coding Required__, we have provided a ready to flash firmware binary file. All you need to do is to configure WiFi connection, and bind it with the app.
+- __State Persistance__, the board will revert back to the state it is in before a restart, or power out.
+- __Pull to Refresh__, for easy reconnection to all bonded ESP board.
+- __Board Reset__, swipe card to unbind the ESP board, and reset it to Wi-Fi configuration mode.
 
 ## What's new ? - 07 December 2021
 
@@ -21,18 +27,6 @@ switch-it! is a simple controller app that lets you control your ESP8266 I/O pin
 - MQTT support with HiveMQ
 - Redesigned device card to show more device info and state
 - Feedback state from device. Example, when sending command from app to turn relay on, the app will wait for confirmation from ESP device. If relay is on, then device will send feedback, and app will update the button state.
-
-## Features
-
-- __One Time Binding__ , the app will store connected device locally, so you don't have to manually enter address of the ESP everytime you wan't to access it.
-- __Free 3 Device Registration__, bind up to 3 ESP8266 device for free.
-- __Auto Discovery__, with mDNS service, the app will automatically look for configured ESP within the same local network.
-- __No Coding Required__, we have provided a ready to flash firmware binary file. All you need to do is to configure WiFi connection, and bind it with the app.
-- __State Persistance__, the board will revert back to the state it is in before a restart, or power out.
-- __Pull to Refresh__, for easy reconnection to all bonded ESP board.
-- __Board Reset__, swipe card to unbind the ESP board, and reset it to Wi-Fi configuration mode.
-- __MQTT__, support control and monitoring through MQTT. (Currently we only support, and tested MQTT implementation with HiveMQ broker).
-- __OTA Firmware Update__, update device firmware through webserver.
 
 ## Setup
 
@@ -61,7 +55,7 @@ We currently only support, and have tested the MQTT features with broker provide
     - Password
     - Hostname (HiveMQ broker server)
     - Port (8883 is the default port)
-    - Keep Aliver (20)
+    - Keep Alive Period (20)
 4. MQTT client ID will be auto generated based on your device UUID.
 5. Press connect, if connection is successful, globe icon on top right will turn purple.
 6. Go back to main screen, the app will automatically contact all devices through websocket, and send MQTT setup command.
